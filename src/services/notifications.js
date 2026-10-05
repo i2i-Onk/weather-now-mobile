@@ -1,5 +1,5 @@
+import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 
 import { adviceForCondition, findUpcomingPrecipitation } from '../utils/forecast';
 import {
@@ -27,6 +27,17 @@ import {
  * fetched, the schedule is rebuilt so it never goes stale.
  */
 
+/**
+ * Since SDK 53, merely importing expo-notifications inside Expo Go on
+ * Android throws (its push-token auto-registration runs on import), which
+ * crashes the whole app. So we only load the module where it works, and
+ * every function below quietly does nothing when it isn't available.
+ * In a development build or a real install, notifications work normally.
+ */
+export const notificationsSupported = !(Platform.OS === 'android' && isRunningInExpoGo());
+
+const Notifications = notificationsSupported ? require('expo-notifications') : null;
+
 const CHANNEL_ID = 'forecast';
 const ID_PREFIX = 'weathernow-';
 const DAILY_ID = (index) => `${ID_PREFIX}daily-${index}`;
@@ -40,6 +51,8 @@ const MIN_LEAD_MS = 60 * 1000;
  * creates the Android notification channel (required on Android 8+).
  */
 export const configureNotifications = async () => {
+  if (!Notifications) return;
+
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -59,6 +72,8 @@ export const configureNotifications = async () => {
 
 /** Asks the OS for permission. Returns true if notifications are allowed. */
 export const requestNotificationPermission = async () => {
+  if (!Notifications) return false;
+
   const existing = await Notifications.getPermissionsAsync();
   if (existing.granted) return true;
 
@@ -147,6 +162,8 @@ export const syncForecastNotifications = async ({
   placeLabel,
   settings,
 }) => {
+  if (!Notifications) return;
+
   try {
     await cancelOurNotifications();
 
@@ -172,6 +189,8 @@ export const syncForecastNotifications = async ({
 
 /** Fires a sample of today's forecast notification in 3 seconds, for testing. */
 export const sendTestNotification = async ({ current, unit, placeLabel }) => {
+  if (!Notifications) return;
+
   const { description, main } = current.weather[0];
   const symbol = unit === 'imperial' ? '°F' : '°C';
 

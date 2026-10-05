@@ -9,7 +9,11 @@ import SettingRow from '../../components/SettingRow';
 import { useSettings } from '../../context/SettingsContext';
 import { useWeather } from '../../context/WeatherContext';
 import useTheme from '../../hooks/useTheme';
-import { requestNotificationPermission, sendTestNotification } from '../../services/notifications';
+import {
+  notificationsSupported,
+  requestNotificationPermission,
+  sendTestNotification,
+} from '../../services/notifications';
 import { MIN_TOUCH_TARGET, radius, spacing } from '../../theme/colors';
 import { formatHourOption } from '../../utils/formatters';
 import { successFeedback, tapFeedback } from '../../utils/haptics';
@@ -41,6 +45,14 @@ export default function SettingsScreen() {
 
   /** If the user previously said no, the OS won't ask again; offer a shortcut to Settings. */
   const explainPermissionDenied = () => {
+    // In Expo Go on Android the module can't load at all, so phone settings won't help.
+    if (!notificationsSupported) {
+      Alert.alert(
+        'Not available in Expo Go',
+        'Notifications need a development build of the app on Android. Everything else works normally here.'
+      );
+      return;
+    }
     Alert.alert(
       'Notifications are turned off',
       'To get forecast notifications, allow notifications for Weather Now in your phone settings.',
